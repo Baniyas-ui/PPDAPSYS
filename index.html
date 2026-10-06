@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Public Parking Department - Appeal & Fine Review System</title>
+  <!-- Tailwind CSS & FontAwesome -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              200: '#bbf7d0',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+              950: '#022c22'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .badge-pending { background-color: #fef3c7; color: #92400e; }
+    .badge-correct { background-color: #d1fae5; color: #065f46; }
+    .badge-wrong { background-color: #fee2e2; color: #991b1b; }
+    .badge-supervisor { background-color: #ffedd5; color: #9a3412; }
+    .badge-info { background-color: #e0f2fe; color: #075985; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 flex h-screen overflow-hidden">
+
+  <!-- PERMANENT LEFT SIDEBAR -->
+  <aside class="w-64 bg-brand-900 text-white flex flex-col justify-between shrink-0 shadow-xl z-20">
+    <div>
+      <!-- Header / Logo -->
+      <div class="p-5 border-b border-brand-800/60 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center text-white text-lg font-bold shadow-md">
+          <i class="fa-solid fa-square-parking"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-sm tracking-wide text-white">Public Parking Dept.</h1>
+          <p class="text-xs text-brand-200">Appeals Management Portal</p>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="p-3 space-y-1 text-sm font-medium">
+        <button onclick="switchTab('create')" id="nav-create" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand-100 bg-brand-800 font-bold transition text-left">
+          <i class="fa-solid fa-circle-plus w-5"></i> Create Appeal
+        </button>
+        <button onclick="switchTab('review')" id="nav-review" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand-100 hover:bg-brand-800 transition text-left">
+          <i class="fa-solid fa-clipboard-check w-5"></i> Review Appeals
+        </button>
+        <button onclick="switchTab('supervisor')" id="nav-supervisor" class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-brand-100 hover:bg-brand-800 transition text-left">
+          <div class="flex items-center gap-3">
+            <i class="fa-solid fa-user-shield w-5"></i> Supervisor Review
+          </div>
+          <span id="sup-badge" class="bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full font-bold hidden">0</span>
+        </button>
+        <button onclick="switchTab('status')" id="nav-status" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand-100 hover:bg-brand-800 transition text-left">
+          <i class="fa-solid fa-magnifying-glass-location w-5"></i> Current Status
+        </button>
+        <button onclick="switchTab('reports')" id="nav-reports" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand-100 hover:bg-brand-800 transition text-left">
+          <i class="fa-solid fa-chart-pie w-5"></i> Reports & Analytics
+        </button>
+      </nav>
+    </div>
+
+    <!-- User Profile Footer -->
+    <div class="p-4 border-t border-brand-800/60 bg-brand-950/40">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-full bg-brand-600 flex items-center justify-center font-bold text-white text-sm">
+          MA
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold truncate text-white">Mohamed Alyassi</p>
+          <p class="text-xs text-brand-200 truncate">ADMIN-001 • Administrator</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT AREA -->
+  <div class="flex-1 flex flex-col h-screen overflow-hidden">
+    
+    <!-- TOP HEADER -->
+    <header class="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between z-10 shrink-0">
+      <div>
+        <h2 id="page-title" class="text-lg font-bold text-slate-800">Create New Appeal</h2>
+        <p id="page-subtitle" class="text-xs text-slate-500">Submit a new complaint or fine appeal for municipal parking review.</p>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <!-- Global Search Bar -->
+        <div class="relative w-80">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-sm"></i>
+          <input type="text" id="globalSearch" oninput="handleGlobalSearch(this.value)" placeholder="Search by appeal number, fine number, plate, customer..." 
+                 class="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-100 rounded-lg border-0 focus:ring-2 focus:ring-brand-500 outline-none">
+        </div>
+
+        <button class="relative p-2 text-slate-500 hover:text-brand-600 transition">
+          <i class="fa-regular fa-bell text-lg"></i>
+          <span class="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full"></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- CONTENT BODY (SCROLLABLE) -->
+    <main class="flex-1 overflow-y-auto p-6 bg-slate-50">
+
+      <!-- PAGE 1: CREATE APPEAL -->
+      <section id="page-create" class="max-w-5xl mx-auto space-y-6">
+        <form id="createAppealForm" onsubmit="handleCreateAppeal(event)" class="space-y-6">
+          
+          <!-- SECTION 1: APPEAL INFORMATION -->
+          <div class="bg-white rounded-xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <h3 class="font-bold text-slate-800 border-b pb-2 flex items-center gap-2 text-sm">
+              <i class="fa-solid fa-file-invoice text-brand-600"></i> Section 1 — Appeal Information
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <!-- Main Appeal Type -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Main Appeal Type *</label>
+                <select id="mainAppealType" required onchange="togglePermitInput(this.value)" class="w-full p-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white">
+                  <option value="">Select Main Appeal Type...</option>
+                  <option value="Fines">Fines</option>
+                  <option value="Permit">Permit</option>
+                  <option value="SMS">SMS</option>
+                  <option value="Smart Yards">Smart Yards</option>
+                  <option value="Investment Yards">Investment Yards</option>
+                  <option value="Sharjah Digital">Sharjah Digital</option>
+                </select>
+              </div>
+
+              <!-- Sub Appeal Type (Optional) -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Sub Appeal Type (Optional)</label>
+                <select id="subAppealType" class="w-full p-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white">
+                  <option value="">-- None (Optional) --</option>
+                  <option value="Service Outage">Service Outage</option>
+                  <option value="Payment Deducted">Payment Deducted</option>
+                  <option value="Service Failed">Service Failed</option>
+                  <option value="Road Side">Road Side</option>
+                  <option value="Between Buildings">Between Buildings</option>
+                </select>
+              </div>
+
+              <!-- Permit Number Box (Shown when Permit selected) -->
+              <div id="permitNumContainer" class="hidden">
+                <label class="block text-xs font-semibold text-amber-700 mb-1">Permit Number *</label>
+                <input type="text" id="permitNumber" placeholder="e.g. PRM-2026-8821" class="w-full p-2 text-xs border border-amber-300 bg-amber-50 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none font-mono">
+              </div>
+
+              <!-- Fine Number * -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Fine Number *</label>
+                <input type="text" id="fineNumber" required placeholder="Enter fine number (e.g. 172000101)" value="172000103" class="w-full p-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none font-mono">
+              </div>
+
+              <!-- SMS Ticket Number (Optional) -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">SMS Ticket Number (Optional)</label>
+                <input type="text" id="smsTicketNumber" placeholder="Enter SMS ticket number" class="w-full p-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none font-mono">
+              </div>
+
+              <!-- Fine Date * -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Fine Date *</label>
+                <input type="date" id="fineDate" required class="w-full p-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
+              </div>
+            </div>
+          </div>
+
+          <!-- SECTION 2: VEHICLE DETAILS -->
+          <div class="bg-white rounded-xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <h3 class="font-bold text-slate-800 border-b pb-2 flex items-center gap-2 text-sm">
+              <i class="fa-solid fa-car text-brand-600"></i> Section 2 — Vehicle Details
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <!-- Plate Source -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Plate Source *</label>
+                <select id="plateSource" onchange="updatePlateCodes(); updatePlatePreview();" class="w-full p-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
+                  <option value="SHJ">Sharjah (SHJ)</option>
+                  <option value="DXB">Dubai (DXB)</option>
+                  <option value="AUH">Abu Dhabi (AUH)</option>
+                  <option value="AJM">Ajman (AJM)</option>
+                  <option value="UAQ">Umm Al Quwain (UAQ)</option>
+                  <option value="RAK">Ras Al Khaimah (RAK)</option>
+                  <option value="FUJ">Fujairah (FUJ)</option>
+                </select>
+              </div>
+
+              <!-- Plate Type -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Plate Type *</label>
+                <select id="plateType" onchange="updatePlatePreview()" class="w-full p-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
+                  <option value="Private">Private</option>
+                  <option value="Public">Public</option>
+                  <option value="Commercial">Commercial</option>
+                  <option value="Taxi">Taxi</option>
+                </select>
+              </div>
+
+              <!-- Plate Code -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Plate Code *</label>
+                <select id="plateCode" onchange="updatePlatePreview()" class="w-full p-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+
+              <!-- Plate Number -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Plate Number *</label>
+                <input type="text" id="plateNumber" required oninput="updatePlatePreview()" placeholder="Enter plate number" value="12345" class="w-full p-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none font-bold">
+              </div>
+            </div>
+
+            <!-- Visual Plate Summary Card -->
+            <div class="mt-4 p-4 bg-slate-100 rounded-xl flex items-center justify-center">
+              <div class="w-72 bg-white border-2 border-slate-800 rounded-lg p-3 shadow-md flex items-center justify-between font-bold">
+                <div class="text-left leading-tight">
+                  <span id="cardSource" class="block text-xs text-brand-700 tracking-widest uppercase">SHARJAH</span>
+                  <span id="cardType" class="block text-[10px] text-slate-500 uppercase">PRIVATE</span>
+                </div>
+                <div class="text-center px-2 py-1 bg-slate-100 rounded border border-slate-300 font-mono text-sm" id="cardCode">A</div>
+                <div class="text-right text-xl font-mono text-slate-900 tracking-wider" id="cardNumber">12345</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECTION 3: CUSTOMER DETAILS -->
+          <div class="bg-white rounded-xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <h3 class="font-bold text-slate-800 border-b pb-2 flex items-center gap-2 text-sm">
+              <i class="fa-solid fa-user text-brand-600"></i> Section 3 — Customer Details
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Customer Name *</label>
+                <input type="text" id="custName" required placeholder="Enter customer full name" value="Khalid Al-Nuaimi" class="w-full p-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Phone Number *</label>
+                <input type="tel" id="custPhone" required placeholder="Enter phone number" value="+971 50 987 6543" class="w-full p-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Email Address *</label>
+                <input type="email" id="custEmail" required placeholder="Enter customer email" value="khalid@example.ae" class="w-full p-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none">
+              </div>
+            </div>
+          </div>
+
+          <!-- SECTION 4: COMPLAINT DESCRIPTION -->
+          <div class="bg-white rounded-xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <h3 class="font-bold text-slate-800 border-b pb-2 flex items-center gap-2 text-sm">
+              <i class="fa-solid fa-align-left text-brand-600"></i> Section 4 — Complaint Description
+            </h3>
+
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label class="text-xs font-semibold text-slate-700">Complaint / Appeal Description *</label>
+                <span class="text-[11px] text-slate-400" id="charCount">0 / 2000</span>
+              </div>
+              <textarea id="complaintDesc" required maxlength="2000" oninput="document.getElementById('charCount').innerText = this.value.length + ' / 2000'" rows="3" 
+                        placeholder="Describe the complaint, reason for appeal, supporting information..." class="w-full p-2.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"></textarea>
+            </div>
+          </div>
+
+          <!-- SECTION 5 & 6: ASSIGNMENT & SUPPORTING DOCUMENTS -->
+          <div class="bg-white rounded-xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <h3 class="font-bold text-slate-800 border-b pb-2 flex items-center gap-2 text-sm">
+              <i class="fa-solid fa-paper-plane text-brand-600"></i> Section 5 & 6 — Assignment & Supporting Documents
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Send To * -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Send To *</label>
+                <select id="sendToDivision" required class="w-full p-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white font-semibold text-brand-800">
+                  <option value="">Select Division...</option>
+                  <option value="Control Room">Control Room</option>
+                  <option value="Parking Services">Parking Services</option>
+                  <option value="Customer Service">Customer Service</option>
+                </select>
+              </div>
+
+              <!-- Supporting Documents -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Supporting Documents (Optional)</label>
+                <input type="file" id="supportingDocs" multiple onchange="handleFileSelected(this)" class="w-full p-1.5 text-xs text-slate-500 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100 border border-slate-200 rounded-lg">
+                <p class="text-[10px] text-slate-400 mt-1">Attachments (PDF, JPG, PNG, DOC, DOCX) are optional.</p>
+                <div id="fileListContainer" class="mt-2 space-y-1 text-xs"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- BUTTONS -->
+          <div class="flex items-center justify-end gap-3 pt-2">
+            <button type="button" onclick="clearCreateForm()" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition">Clear Form</button>
+            <button type="button" onclick="saveDraftForm()" class="px-4 py-2 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 rounded-lg transition">Save as Draft</button>
+            <button type="submit" class="px-6 py-2.5 text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-md transition flex items-center gap-2">
+              <i class="fa-solid fa-paper-plane"></i> Submit Appeal
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- PAGE 2: REVIEW APPEALS -->
+      <section id="page-review" class="hidden space-y-4">
+        <!-- Filter Bar -->
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap gap-3 items-center">
+          <input type="text" id="reviewSearch" oninput="renderReviewTable()" placeholder="Search Fine / Appeal No / Sender..." class="p-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-brand-500 w-52">
+          
+          <select id="reviewDivFilter" onchange="renderReviewTable()" class="p-2 text-xs border border-slate-300 rounded-lg outline-none bg-white">
+            <option value="">All Divisions</option>
+            <option value="Control Room">Control Room</option>
+            <option value="Parking Services">Parking Services</option>
+            <option value="Customer Service">Customer Service</option>
+          </select>
+
+          <select id="reviewStatusFilter" onchange="renderReviewTable()" class="p-2 text-xs border border-slate-300 rounded-lg outline-none bg-white">
+            <option value="">All Statuses</option>
+            <option value="Pending Review">Waiting for Review</option>
+            <option value="Supervisor Review">Supervisor Review</option>
+            <option value="Final — Correct Fine">Final — Correct Fine</option>
+            <option value="Final — Wrong Fine">Final — Wrong Fine</option>
+          </select>
+
+          <button onclick="renderReviewTable()" class="px-3 py-2 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
+        </div>
+
+        <!-- Appeals Data Table with "Send By" & "Date of Complaint" -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100 text-slate-700 uppercase font-semibold border-b border-slate-200">
+              <tr>
+                <th class="p-3">Appeal / Fine No</th>
+                <th class="p-3">Plate Info</th>
+                <th class="p-3">Main Type</th>
+                <th class="p-3">Customer</th>
+                <th class="p-3">Date of Complaint</th>
+                <th class="p-3">Send By</th>
+                <th class="p-3">Division</th>
+                <th class="p-3">Status</th>
+                <th class="p-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="reviewTableBody" class="divide-y divide-slate-100">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- PAGE 3: SUPERVISOR REVIEW -->
+      <section id="page-supervisor" class="hidden space-y-4">
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3 text-xs text-amber-800">
+          <i class="fa-solid fa-shield-halved text-lg text-amber-600"></i>
+          <div>
+            <p class="font-bold">Supervisor Executive Approval Queue</p>
+            <p>Cases escalated by first-level reviewers requiring final cancellation or confirmation authority.</p>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100 text-slate-700 uppercase font-semibold border-b border-slate-200">
+              <tr>
+                <th class="p-3">Appeal / Fine No</th>
+                <th class="p-3">Plate Info</th>
+                <th class="p-3">Main Type</th>
+                <th class="p-3">First Reviewer</th>
+                <th class="p-3">Reviewer Decision</th>
+                <th class="p-3">Status</th>
+                <th class="p-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="supervisorTableBody" class="divide-y divide-slate-100">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- PAGE 4: CURRENT STATUS (SEARCH) -->
+      <section id="page-status" class="hidden max-w-3xl mx-auto space-y-6">
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-center space-y-4">
+          <h3 class="text-base font-bold text-slate-800">Track Fine & Appeal Status</h3>
+          <p class="text-xs text-slate-500">Enter a Fine Number (e.g. 172000101) or Appeal ID to search status</p>
+
+          <div class="flex gap-2 max-w-md mx-auto">
+            <input type="text" id="statusSearchInput" placeholder="Enter Fine Number..." class="flex-1 p-2.5 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-brand-500 font-mono">
+            <button onclick="searchCurrentStatus()" class="px-5 py-2.5 bg-brand-600 text-white rounded-lg text-xs font-bold hover:bg-brand-700 shadow">Search</button>
+          </div>
+        </div>
+
+        <div id="statusResultContainer" class="hidden bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6">
+          <!-- Dynamic status view -->
+        </div>
+      </section>
+
+      <!-- PAGE 5: REPORTS & ANALYTICS -->
+      <section id="page-reports" class="hidden space-y-6">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <p class="text-xs text-slate-500 font-medium">Total Cases</p>
+            <p class="text-2xl font-bold text-slate-800" id="kpiTotal">0</p>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <p class="text-xs text-amber-600 font-medium">Waiting for Review</p>
+            <p class="text-2xl font-bold text-amber-600" id="kpiPending">0</p>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <p class="text-xs text-emerald-600 font-medium">Confirmed (Correct Fine)</p>
+            <p class="text-2xl font-bold text-emerald-600" id="kpiCorrect">0</p>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <p class="text-xs text-rose-600 font-medium">Cancelled (Wrong Fine)</p>
+            <p class="text-2xl font-bold text-rose-600" id="kpiWrong">0</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <h4 class="text-xs font-bold text-slate-700 mb-3">Appeals by Main Category</h4>
+            <div class="h-48"><canvas id="chartType"></canvas></div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <h4 class="text-xs font-bold text-slate-700 mb-3">Final Decision Ratios</h4>
+            <div class="h-48 flex justify-center"><canvas id="chartDecision"></canvas></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- REVIEW CASE DRAWER -->
+  <div id="reviewDrawer" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex justify-end">
+    <div class="w-full max-w-2xl bg-white h-full shadow-2xl flex flex-col justify-between overflow-y-auto p-6 space-y-6">
+      
+      <div>
+        <div class="flex items-center justify-between border-b pb-3">
+          <div>
+            <h3 class="font-bold text-slate-800 text-sm" id="drawerTitle">Review Appeal Case</h3>
+            <p class="text-xs text-slate-500" id="drawerAppealId">APP-172000101</p>
+          </div>
+          <button onclick="closeDrawer()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+
+        <div class="space-y-4 py-4 text-xs">
+          <div class="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-lg border">
+            <div><span class="text-slate-400">Fine Number:</span> <strong class="font-mono text-slate-800" id="drawerFineNo">-</strong></div>
+            <div><span class="text-slate-400">Fine Date:</span> <strong id="drawerFineDate">-</strong></div>
+            <div><span class="text-slate-400">Customer:</span> <strong id="drawerCustName">-</strong></div>
+            <div><span class="text-slate-400">Phone:</span> <strong id="drawerCustPhone">-</strong></div>
+            <div><span class="text-slate-400">Permit No:</span> <strong id="drawerPermitNo" class="text-amber-700">-</strong></div>
+            <div><span class="text-slate-400">SMS Ticket:</span> <strong id="drawerSmsNo">-</strong></div>
+            <div class="col-span-2 border-t pt-1 mt-1"><span class="text-slate-400">Send By:</span> <strong id="drawerSentBy" class="text-brand-700">-</strong></div>
+          </div>
+
+          <div class="p-3 bg-slate-50 rounded-lg border flex items-center justify-between">
+            <div>
+              <p class="text-slate-400">Vehicle Details:</p>
+              <p class="font-bold text-slate-800" id="drawerPlateSummary">-</p>
+            </div>
+            <div class="px-3 py-1 bg-white border border-slate-300 rounded text-xs font-mono font-bold" id="drawerPlateBadge">
+              SHJ | A | 12345
+            </div>
+          </div>
+
+          <div class="p-3 bg-slate-50 rounded-lg border">
+            <p class="text-slate-400 mb-1">Complaint Description:</p>
+            <p class="text-slate-800 italic" id="drawerDesc">-</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <button type="button" onclick="openFetchModal()" class="py-2.5 px-3 bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 rounded-lg font-bold flex items-center justify-center gap-1.5 text-[11px] transition">
+              <i class="fa-solid fa-satellite-dish text-emerald-600"></i> Fetch Logs
+            </button>
+            <button type="button" onclick="openFinePhotosModal()" class="py-2.5 px-3 bg-blue-50 text-blue-800 border border-blue-300 hover:bg-blue-100 rounded-lg font-bold flex items-center justify-center gap-1.5 text-[11px] transition">
+              <i class="fa-solid fa-camera text-blue-600"></i> Retrieve Fine Photos
+            </button>
+            <button type="button" onclick="openSmartCameraRedirect()" class="py-2.5 px-3 bg-indigo-50 text-indigo-800 border border-indigo-300 hover:bg-indigo-100 rounded-lg font-bold flex items-center justify-center gap-1.5 text-[11px] transition">
+              <i class="fa-solid fa-video text-indigo-600"></i> Fetch Entry/Exit Photo
+            </button>
+          </div>
+
+          <div class="p-3 bg-slate-50 rounded-lg border">
+            <p class="text-slate-400 mb-1 font-semibold">Supporting Documents Attached:</p>
+            <div id="drawerAttachments" class="text-slate-600">No attachments uploaded.</div>
+          </div>
+
+          <div id="firstReviewerCard" class="hidden p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-1">
+            <p class="font-bold text-amber-900">First-Level Review Assessment</p>
+            <p><span class="text-amber-700">Reviewer Recommendation:</span> <strong id="supRevRec">-</strong></p>
+            <p><span class="text-amber-700">Reviewer Comments:</span> <span id="supRevComments" class="italic">-</span></p>
+          </div>
+
+          <div class="pt-2 space-y-3">
+            <h4 class="font-bold text-slate-800 text-xs" id="decisionSectionHeader">Select Review Decision *</h4>
+            
+            <div id="reviewerButtons" class="grid grid-cols-3 gap-3">
+              <button type="button" onclick="selectDecision('Correct Fine')" id="btnDecCorrect" class="p-3 rounded-lg border-2 border-slate-200 hover:border-emerald-500 text-center transition">
+                <i class="fa-solid fa-circle-check text-emerald-600 text-lg block mb-1"></i>
+                <span class="font-bold text-slate-700 block text-[11px]">Correct Fine</span>
+              </button>
+
+              <button type="button" onclick="selectDecision('Wrong Fine')" id="btnDecWrong" class="p-3 rounded-lg border-2 border-slate-200 hover:border-rose-500 text-center transition">
+                <i class="fa-solid fa-circle-xmark text-rose-600 text-lg block mb-1"></i>
+                <span class="font-bold text-slate-700 block text-[11px]">Wrong Fine</span>
+              </button>
+
+              <button type="button" onclick="selectDecision('Supervisor Review')" id="btnDecSup" class="p-3 rounded-lg border-2 border-slate-200 hover:border-amber-500 text-center transition">
+                <i class="fa-solid fa-user-shield text-amber-600 text-lg block mb-1"></i>
+                <span class="font-bold text-slate-700 block text-[11px]">Escalate to Sup.</span>
+              </button>
+            </div>
+
+            <div id="forwardContainer">
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Forward Case To / Send To *</label>
+              <select id="drawerForwardTo" class="w-full p-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none bg-white font-semibold">
+                <option value="Control Room">Control Room</option>
+                <option value="Parking Services">Parking Services</option>
+                <option value="Customer Service">Customer Service</option>
+                <option value="Supervisor">Supervisor</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Justification Comments *</label>
+              <textarea id="drawerComments" rows="3" placeholder="Enter review findings and remarks..." class="w-full p-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between border-t pt-3">
+        <button onclick="openAuditTrail(currentReviewId)" class="px-3 py-1.5 text-xs text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-lg font-semibold"><i class="fa-solid fa-clock-rotate-left"></i> Audit Trail</button>
+        <div class="flex items-center gap-2">
+          <button onclick="closeDrawer()" class="px-4 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+          <button onclick="submitCaseDecision()" class="px-5 py-2 text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow">Submit Decision</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RETRIEVE FINE PHOTOS MODAL -->
+  <div id="finePhotosModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl max-w-xl w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b pb-2">
+        <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+          <i class="fa-solid fa-camera text-blue-600"></i> Inspection Fine Photos
+        </h3>
+        <button onclick="document.getElementById('finePhotosModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 text-xs">
+        <div class="border rounded-lg p-2 bg-slate-50 space-y-1">
+          <div class="h-36 bg-slate-800 rounded flex items-center justify-center text-slate-400 text-center p-3 relative overflow-hidden">
+            <i class="fa-solid fa-car text-4xl text-slate-600"></i>
+            <span class="absolute bottom-2 left-2 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded">Vehicle Rear & Plate</span>
+          </div>
+          <p class="font-bold text-slate-700 mt-1">Photo #1: Plate Capture</p>
+          <p class="text-[10px] text-slate-500">Timestamp: 2026-09-15 11:08:19 AM</p>
+        </div>
+
+        <div class="border rounded-lg p-2 bg-slate-50 space-y-1">
+          <div class="h-36 bg-slate-800 rounded flex items-center justify-center text-slate-400 text-center p-3 relative overflow-hidden">
+            <i class="fa-solid fa-square-parking text-4xl text-slate-600"></i>
+            <span class="absolute bottom-2 left-2 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded">Dashboard / Windshield</span>
+          </div>
+          <p class="font-bold text-slate-700 mt-1">Photo #2: Windshield Scan</p>
+          <p class="text-[10px] text-slate-500">Inspector ID: INS-409</p>
+        </div>
+      </div>
+
+      <button onclick="document.getElementById('finePhotosModal').classList.add('hidden')" class="w-full py-2 bg-slate-800 text-white rounded-lg font-bold text-xs">Close Photos</button>
+    </div>
+  </div>
+
+  <!-- REDIRECT TO SMART CAMERA SYSTEM MODAL -->
+  <div id="smartCameraModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4 text-center">
+      <div class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto text-xl font-bold">
+        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+      </div>
+      <div>
+        <h3 class="font-bold text-slate-800 text-base">Smart Parking System Redirect</h3>
+        <p class="text-xs text-slate-600 mt-2 font-medium">redirect to SRP or Smart yard system</p>
+      </div>
+      <button onclick="document.getElementById('smartCameraModal').classList.add('hidden')" class="w-full py-2 bg-indigo-600 text-white rounded-lg font-bold text-xs hover:bg-indigo-700 transition">OK</button>
+    </div>
+  </div>
+
+  <!-- FETCH TELEMATICS POPUP MODAL -->
+  <div id="fetchModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b pb-2">
+        <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+          <i class="fa-solid fa-satellite-dish text-emerald-600"></i> Municipal System Telematics
+        </h3>
+        <button onclick="document.getElementById('fetchModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="p-3 bg-slate-50 border rounded-lg space-y-1">
+          <p class="font-bold text-slate-800">SMS Ticket Log</p>
+          <p><span class="text-slate-400">Timestamp:</span> 2026-09-15 09:12:04 AM</p>
+          <p><span class="text-slate-400">Zone Code:</span> SHJ-3302 (Al Majaz 2)</p>
+          <p><span class="text-slate-400">Duration Paid:</span> 2 Hours (Valid until 11:12 AM)</p>
+        </div>
+
+        <div class="p-3 bg-slate-50 border rounded-lg space-y-1">
+          <p class="font-bold text-slate-800">Scancar Automatic Inspection Log</p>
+          <p><span class="text-slate-400">Scan Time:</span> 2026-09-15 11:08:19 AM</p>
+          <p><span class="text-slate-400">GPS Location:</span> Lat 25.321, Long 55.389</p>
+          <p><span class="text-slate-400">Match Status:</span> Valid active payment detected during scan</p>
+        </div>
+      </div>
+
+      <button onclick="document.getElementById('fetchModal').classList.add('hidden')" class="w-full py-2 bg-brand-600 text-white rounded-lg font-bold text-xs">Close Details</button>
+    </div>
+  </div>
+
+  <!-- AUDIT TRAIL MODAL -->
+  <div id="auditModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b pb-2">
+        <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+          <i class="fa-solid fa-clock-rotate-left text-brand-600"></i> Audit Trail History
+        </h3>
+        <button onclick="document.getElementById('auditModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div id="auditTimeline" class="space-y-3 text-xs max-h-80 overflow-y-auto">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <button onclick="document.getElementById('auditModal').classList.add('hidden')" class="w-full py-2 bg-slate-200 text-slate-700 rounded-lg font-bold text-xs">Close Timeline</button>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT APP LOGIC -->
+  <script>
+    let appeals = [
+      {
+        appealId: "APP-172000101",
+        fineNumber: "172000101",
+        fineDate: "2026-09-15",
+        mainAppealType: "Fines",
+        subAppealType: "Road Side",
+        permitNumber: "",
+        smsTicketNumber: "TKT-8812",
+        vehicle: { plateSource: "SHJ", plateType: "Private", plateCode: "A", plateNumber: "12345" },
+        customer: { name: "Sultan Al-Mansoori", phone: "+971 50 123 4567", email: "sultan.m@example.ae" },
+        complaintDescription: "Paid via SMS ticket TKT-8812 but received fine due to system delay.",
+        assignedDivision: "Parking Services",
+        attachments: ["sms_receipt_8812.pdf"],
+        status: "Pending Review",
+        submittedBy: "Mohamed Alyassi",
+        submissionDate: "2026-09-16",
+        reviewerDecision: null,
+        reviewerComments: null,
+        supervisorDecision: null,
+        supervisorComments: null,
+        auditHistory: [
+          { date: "2026-09-16 09:30 AM", user: "Mohamed Alyassi (ADMIN-001)", action: "Appeal Created & Submitted", comments: "Initial submission." }
+        ]
+      },
+      {
+        appealId: "APP-172000102",
+        fineNumber: "172000102",
+        fineDate: "2026-09-18",
+        mainAppealType: "Permit",
+        subAppealType: "Service Failed",
+        permitNumber: "PRM-2026-0041",
+        smsTicketNumber: "",
+        vehicle: { plateSource: "DXB", plateType: "Private", plateCode: "I", plateNumber: "88210" },
+        customer: { name: "Mariam Al-Ali", phone: "+971 55 987 6543", email: "mariam@example.ae" },
+        complaintDescription: "Valid resident permit PRM-2026-0041 active during time of inspection.",
+        assignedDivision: "Control Room",
+        attachments: ["resident_permit_copy.png"],
+        status: "Supervisor Review",
+        submittedBy: "Customer Support Portal",
+        submissionDate: "2026-09-19",
+        reviewerDecision: "Supervisor Review",
+        reviewerComments: "Resident permit active in database during scan time. Escalated for cancellation authorization.",
+        supervisorDecision: null,
+        supervisorComments: null,
+        auditHistory: [
+          { date: "2026-09-19 10:15 AM", user: "Customer Support Portal", action: "Appeal Created", comments: "Submitted." },
+          { date: "2026-09-20 02:00 PM", user: "First Reviewer", action: "Escalated to Supervisor", comments: "Permit verified." }
+        ]
+      }
+    ];
+
+    let currentReviewId = null;
+    let selectedDecisionOption = null;
+    let uploadedFilesList = [];
+    let isSupervisorMode = false;
+
+    window.onload = function() {
+      updatePlateCodes();
+      updatePlatePreview();
+      renderReviewTable();
+      renderSupervisorTable();
+      updateKPIs();
+      initCharts();
+    };
+
+    const plateCodesByEmirate = {
+      SHJ: ["1", "2", "3", "A", "B", "C"],
+      DXB: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "AA"],
+      AUH: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "50"],
+      AJM: ["A", "B", "C", "D", "E", "H"],
+      UAQ: ["A", "B", "C", "D", "X"],
+      RAK: ["A", "B", "C", "D", "K", "N", "V", "Y"],
+      FUJ: ["A", "B", "C", "D", "E", "F", "G", "K", "M", "P", "R", "S", "T", "V", "X"]
+    };
+
+    function updatePlateCodes() {
+      const em = document.getElementById("plateSource").value;
+      const codeSelect = document.getElementById("plateCode");
+      codeSelect.innerHTML = "";
+      (plateCodesByEmirate[em] || ["A"]).forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c; opt.innerText = c;
+        codeSelect.appendChild(opt);
+      });
+    }
+
+    function updatePlatePreview() {
+      document.getElementById("cardSource").innerText = document.getElementById("plateSource").value;
+      document.getElementById("cardType").innerText = document.getElementById("plateType").value;
+      document.getElementById("cardCode").innerText = document.getElementById("plateCode").value || "A";
+      document.getElementById("cardNumber").innerText = document.getElementById("plateNumber").value || "12345";
+    }
+
+    function togglePermitInput(val) {
+      const container = document.getElementById("permitNumContainer");
+      if (val === "Permit") {
+        container.classList.remove("hidden");
+        document.getElementById("permitNumber").required = true;
+      } else {
+        container.classList.add("hidden");
+        document.getElementById("permitNumber").required = false;
+      }
+    }
+
+    function handleFileSelected(input) {
+      const container = document.getElementById("fileListContainer");
+      container.innerHTML = "";
+      uploadedFilesList = [];
+      Array.from(input.files).forEach(f => {
+        uploadedFilesList.push(f.name);
+        const div = document.createElement("div");
+        div.className = "flex items-center justify-between p-1.5 bg-slate-100 rounded border border-slate-200";
+        div.innerHTML = `<span><i class="fa-solid fa-paperclip text-brand-600"></i> ${f.name} (${Math.round(f.size/1024)} KB)</span>`;
+        container.appendChild(div);
+      });
+    }
+
+    function clearCreateForm() {
+      document.getElementById("createAppealForm").reset();
+      document.getElementById("fileListContainer").innerHTML = "";
+      uploadedFilesList = [];
+      updatePlateCodes();
+      updatePlatePreview();
+    }
+
+    function saveDraftForm() {
+      alert("Draft saved successfully!");
+    }
+
+    function switchTab(tab) {
+      ['create', 'review', 'supervisor', 'status', 'reports'].forEach(p => {
+        document.getElementById(`page-${p}`).classList.add('hidden');
+        document.getElementById(`nav-${p}`).classList.remove('bg-brand-800', 'font-bold');
+      });
+
+      document.getElementById(`page-${tab}`).classList.remove('hidden');
+      document.getElementById(`nav-${tab}`).classList.add('bg-brand-800', 'font-bold');
+
+      const titles = {
+        create: ["Create New Appeal", "Submit a new complaint or fine appeal for municipal parking review."],
+        review: ["Review Appeals", "First-level case evaluation and decision recommendation."],
+        supervisor: ["Supervisor Review", "Executive final authorization queue."],
+        status: ["Current Status", "Track case progress using Fine Number."],
+        reports: ["Reports & Analytics", "Overview metrics and decision performance."]
+      };
+
+      document.getElementById("page-title").innerText = titles[tab][0];
+      document.getElementById("page-subtitle").innerText = titles[tab][1];
+
+      if (tab === 'reports') updateCharts();
+    }
+
+    function handleCreateAppeal(e) {
+      e.preventDefault();
+      const fineNo = document.getElementById("fineNumber").value;
+      const todayStr = new Date().toISOString().split('T')[0];
+      const newApp = {
+        appealId: `APP-${fineNo}`,
+        fineNumber: fineNo,
+        fineDate: document.getElementById("fineDate").value,
+        mainAppealType: document.getElementById("mainAppealType").value,
+        subAppealType: document.getElementById("subAppealType").value || "",
+        permitNumber: document.getElementById("permitNumber").value || "",
+        smsTicketNumber: document.getElementById("smsTicketNumber").value || "",
+        vehicle: {
+          plateSource: document.getElementById("plateSource").value,
+          plateType: document.getElementById("plateType").value,
+          plateCode: document.getElementById("plateCode").value,
+          plateNumber: document.getElementById("plateNumber").value
+        },
+        customer: {
+          name: document.getElementById("custName").value,
+          phone: document.getElementById("custPhone").value,
+          email: document.getElementById("custEmail").value
+        },
+        complaintDescription: document.getElementById("complaintDesc").value,
+        assignedDivision: document.getElementById("sendToDivision").value,
+        attachments: [...uploadedFilesList],
+        status: "Pending Review",
+        submittedBy: "Mohamed Alyassi",
+        submissionDate: todayStr,
+        reviewerDecision: null,
+        reviewerComments: null,
+        supervisorDecision: null,
+        supervisorComments: null,
+        auditHistory: [
+          { date: new Date().toLocaleString(), user: "Mohamed Alyassi (ADMIN-001)", action: "Appeal Created & Submitted", comments: `Assigned to ${document.getElementById("sendToDivision").value}` }
+        ]
+      };
+
+      appeals.unshift(newApp);
+      alert(`Appeal Submitted Successfully!\nAppeal ID: APP-${fineNo}`);
+      clearCreateForm();
+      renderReviewTable();
+      updateKPIs();
+      switchTab('review');
+    }
+
+    // Render Review Appeals Table (Includes "Send By" Column)
+    function renderReviewTable() {
+      const tbody = document.getElementById("reviewTableBody");
+      const search = document.getElementById("reviewSearch").value.toLowerCase();
+      const divFilter = document.getElementById("reviewDivFilter").value;
+      const statusFilter = document.getElementById("reviewStatusFilter").value;
+
+      tbody.innerHTML = "";
+
+      const filtered = appeals.filter(a => {
+        const matchSearch = a.fineNumber.toLowerCase().includes(search) || 
+                            a.appealId.toLowerCase().includes(search) || 
+                            a.customer.name.toLowerCase().includes(search) || 
+                            (a.submittedBy && a.submittedBy.toLowerCase().includes(search));
+        const matchDiv = !divFilter || a.assignedDivision === divFilter;
+        const matchStatus = !statusFilter || a.status === statusFilter;
+        return matchSearch && matchDiv && matchStatus;
+      });
+
+      filtered.forEach(app => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+        tr.innerHTML = `
+          <td class="p-3 font-mono font-bold text-slate-800">
+            ${app.appealId}<br><span class="text-[10px] text-slate-400 font-normal">Fine: ${app.fineNumber}</span>
+          </td>
+          <td class="p-3">
+            <span class="font-bold">${app.vehicle.plateSource} ${app.vehicle.plateCode} ${app.vehicle.plateNumber}</span>
+            <br><span class="text-[10px] text-slate-400">${app.vehicle.plateType}</span>
+          </td>
+          <td class="p-3 font-medium">${app.mainAppealType}</td>
+          <td class="p-3">${app.customer.name}</td>
+          <td class="p-3 text-slate-600 font-mono">${app.submissionDate}</td>
+          <td class="p-3 text-slate-600 font-medium">${app.submittedBy || 'Mohamed Alyassi'}</td>
+          <td class="p-3 font-semibold text-brand-800">${app.assignedDivision}</td>
+          <td class="p-3">${getStatusBadge(app.status)}</td>
+          <td class="p-3 text-right">
+            <button onclick="openReviewDrawer('${app.appealId}', false)" class="px-3 py-1 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded text-[11px]">Review Case</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderSupervisorTable() {
+      const tbody = document.getElementById("supervisorTableBody");
+      const supCases = appeals.filter(a => a.status === 'Supervisor Review');
+      
+      document.getElementById("sup-badge").innerText = supCases.length;
+      document.getElementById("sup-badge").classList.toggle("hidden", supCases.length === 0);
+
+      tbody.innerHTML = "";
+      supCases.forEach(app => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+        tr.innerHTML = `
+          <td class="p-3 font-mono font-bold text-slate-800">${app.appealId}<br><span class="text-[10px] text-slate-400 font-normal">Fine: ${app.fineNumber}</span></td>
+          <td class="p-3"><span class="font-bold">${app.vehicle.plateSource} ${app.vehicle.plateCode} ${app.vehicle.plateNumber}</span></td>
+          <td class="p-3 font-medium">${app.mainAppealType}</td>
+          <td class="p-3">${app.submittedBy}</td>
+          <td class="p-3 font-semibold text-amber-700">${app.reviewerDecision || 'Supervisor Review'}</td>
+          <td class="p-3">${getStatusBadge(app.status)}</td>
+          <td class="p-3 text-right">
+            <button onclick="openReviewDrawer('${app.appealId}', true)" class="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded text-[11px]">Supervisor Review</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openReviewDrawer(appealId, supervisorMode = false) {
+      currentReviewId = appealId;
+      isSupervisorMode = supervisorMode;
+      const app = appeals.find(a => a.appealId === appealId);
+      if (!app) return;
+
+      document.getElementById("drawerTitle").innerText = supervisorMode ? "Supervisor Final Review" : "First-Level Review Appeal Case";
+      document.getElementById("drawerAppealId").innerText = app.appealId;
+      document.getElementById("drawerFineNo").innerText = app.fineNumber;
+      document.getElementById("drawerFineDate").innerText = app.fineDate;
+      document.getElementById("drawerCustName").innerText = app.customer.name;
+      document.getElementById("drawerCustPhone").innerText = app.customer.phone;
+      document.getElementById("drawerPermitNo").innerText = app.permitNumber || "N/A";
+      document.getElementById("drawerSmsNo").innerText = app.smsTicketNumber || "N/A";
+      document.getElementById("drawerSentBy").innerText = app.submittedBy || "Mohamed Alyassi";
+      document.getElementById("drawerPlateSummary").innerText = `${app.vehicle.plateSource} - ${app.vehicle.plateType}`;
+      document.getElementById("drawerPlateBadge").innerText = `${app.vehicle.plateSource} | ${app.vehicle.plateCode} | ${app.vehicle.plateNumber}`;
+      document.getElementById("drawerDesc").innerText = app.complaintDescription;
+
+      const attachDiv = document.getElementById("drawerAttachments");
+      if (app.attachments && app.attachments.length > 0) {
+        attachDiv.innerHTML = app.attachments.map(file => `<div class="p-1 bg-white border rounded text-xs text-brand-700 font-medium mb-1"><i class="fa-solid fa-file-pdf"></i> ${file}</div>`).join('');
+      } else {
+        attachDiv.innerHTML = "<p class='italic text-slate-400'>No supporting documents attached.</p>";
+      }
+
+      const supCard = document.getElementById("firstReviewerCard");
+      if (supervisorMode) {
+        supCard.classList.remove("hidden");
+        document.getElementById("supRevRec").innerText = app.reviewerDecision || "Escalated for Supervisor Review";
+        document.getElementById("supRevComments").innerText = app.reviewerComments || "None";
+        document.getElementById("forwardContainer").classList.add("hidden");
+      } else {
+        supCard.classList.add("hidden");
+        document.getElementById("forwardContainer").classList.remove("hidden");
+      }
+
+      document.getElementById("drawerForwardTo").value = app.assignedDivision;
+      document.getElementById("drawerComments").value = supervisorMode ? (app.supervisorComments || "") : (app.reviewerComments || "");
+
+      selectDecision(supervisorMode ? app.supervisorDecision : app.reviewerDecision);
+      document.getElementById("reviewDrawer").classList.remove("hidden");
+    }
+
+    function selectDecision(dec) {
+      selectedDecisionOption = dec;
+      ['btnDecCorrect', 'btnDecWrong', 'btnDecSup'].forEach(id => {
+        document.getElementById(id).classList.remove('border-emerald-500', 'border-rose-500', 'border-amber-500', 'bg-slate-50');
+      });
+
+      if (dec === 'Correct Fine') {
+        document.getElementById('btnDecCorrect').classList.add('border-emerald-500', 'bg-slate-50');
+      } else if (dec === 'Wrong Fine') {
+        document.getElementById('btnDecWrong').classList.add('border-rose-500', 'bg-slate-50');
+      } else if (dec === 'Supervisor Review') {
+        document.getElementById('btnDecSup').classList.add('border-amber-500', 'bg-slate-50');
+        document.getElementById('drawerForwardTo').value = "Supervisor";
+      }
+    }
+
+    function submitCaseDecision() {
+      if (!selectedDecisionOption) {
+        alert("Please select a decision option."); return;
+      }
+
+      const app = appeals.find(a => a.appealId === currentReviewId);
+      if (!app) return;
+
+      const comments = document.getElementById("drawerComments").value;
+
+      if (isSupervisorMode) {
+        app.supervisorDecision = selectedDecisionOption;
+        app.supervisorComments = comments;
+        app.status = selectedDecisionOption === 'Correct Fine' ? "Final — Correct Fine" : "Final — Wrong Fine";
+        app.auditHistory.push({
+          date: new Date().toLocaleString(),
+          user: "Mohamed Alyassi (ADMIN-001 - Supervisor)",
+          action: `Final Decision Recorded: ${app.status}`,
+          comments: comments
+        });
+      } else {
+        app.reviewerDecision = selectedDecisionOption;
+        app.reviewerComments = comments;
+        app.assignedDivision = document.getElementById("drawerForwardTo").value;
+
+        if (selectedDecisionOption === 'Supervisor Review' || app.assignedDivision === 'Supervisor') {
+          app.status = "Supervisor Review";
+        } else if (selectedDecisionOption === 'Correct Fine') {
+          app.status = "Final — Correct Fine";
+        } else if (selectedDecisionOption === 'Wrong Fine') {
+          app.status = "Final — Wrong Fine";
+        }
+
+        app.auditHistory.push({
+          date: new Date().toLocaleString(),
+          user: "Mohamed Alyassi (ADMIN-001)",
+          action: `First-Level Review: ${selectedDecisionOption}`,
+          comments: comments
+        });
+      }
+
+      renderReviewTable();
+      renderSupervisorTable();
+      updateKPIs();
+      closeDrawer();
+      alert("Decision saved successfully!");
+    }
+
+    function closeDrawer() {
+      document.getElementById("reviewDrawer").classList.add("hidden");
+    }
+
+    function openFetchModal() {
+      document.getElementById("fetchModal").classList.remove("hidden");
+    }
+
+    function openFinePhotosModal() {
+      document.getElementById("finePhotosModal").classList.remove("hidden");
+    }
+
+    function openSmartCameraRedirect() {
+      document.getElementById("smartCameraModal").classList.remove("hidden");
+    }
+
+    function openAuditTrail(appealId) {
+      const app = appeals.find(a => a.appealId === appealId);
+      if (!app) return;
+
+      const container = document.getElementById("auditTimeline");
+      container.innerHTML = app.auditHistory.map(h => `
+        <div class="p-2.5 bg-slate-50 rounded border border-slate-200">
+          <div class="flex justify-between font-bold text-slate-800">
+            <span>${h.action}</span>
+            <span class="text-[10px] text-slate-400 font-normal">${h.date}</span>
+          </div>
+          <p class="text-slate-500 text-[11px]">${h.user}</p>
+          <p class="text-slate-700 italic mt-1">${h.comments}</p>
+        </div>
+      `).join('');
+
+      document.getElementById("auditModal").classList.remove("hidden");
+    }
+
+    function searchCurrentStatus() {
+      const query = document.getElementById("statusSearchInput").value.trim();
+      const container = document.getElementById("statusResultContainer");
+      const app = appeals.find(a => a.fineNumber === query || a.appealId === query);
+
+      if (!app) {
+        container.classList.remove("hidden");
+        container.innerHTML = `<p class="text-rose-600 font-bold text-xs text-center">No record found for Fine Number: ${query}</p>`;
+        return;
+      }
+
+      container.classList.remove("hidden");
+      container.innerHTML = `
+        <div class="flex items-center justify-between border-b pb-3">
+          <div>
+            <h4 class="font-bold text-slate-800 text-sm">Fine Number: ${app.fineNumber}</h4>
+            <p class="text-xs text-slate-500">Appeal Reference: ${app.appealId}</p>
+          </div>
+          ${getStatusBadge(app.status)}
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 text-xs">
+          <div><span class="text-slate-400">Customer Name:</span> <p class="font-bold">${app.customer.name}</p></div>
+          <div><span class="text-slate-400">Assigned Division:</span> <p class="font-bold text-brand-800">${app.assignedDivision}</p></div>
+          <div><span class="text-slate-400">Fine Date:</span> <p class="font-bold">${app.fineDate}</p></div>
+          <div><span class="text-slate-400">Plate:</span> <p class="font-bold">${app.vehicle.plateSource} ${app.vehicle.plateCode} ${app.vehicle.plateNumber}</p></div>
+        </div>
+      `;
+    }
+
+    function getStatusBadge(status) {
+      const maps = {
+        'Pending Review': '<span class="badge-pending px-2.5 py-1 rounded-full text-[10px] font-bold">Waiting for Review</span>',
+        'Supervisor Review': '<span class="badge-supervisor px-2.5 py-1 rounded-full text-[10px] font-bold">Supervisor Review</span>',
+        'Final — Correct Fine': '<span class="badge-correct px-2.5 py-1 rounded-full text-[10px] font-bold">Final — Correct Fine</span>',
+        'Final — Wrong Fine': '<span class="badge-wrong px-2.5 py-1 rounded-full text-[10px] font-bold">Final — Wrong Fine</span>'
+      };
+      return maps[status] || `<span class="badge-info px-2.5 py-1 rounded-full text-[10px] font-bold">${status}</span>`;
+    }
+
+    function updateKPIs() {
+      document.getElementById("kpiTotal").innerText = appeals.length;
+      document.getElementById("kpiPending").innerText = appeals.filter(a => a.status === 'Pending Review').length;
+      document.getElementById("kpiCorrect").innerText = appeals.filter(a => a.status === 'Final — Correct Fine').length;
+      document.getElementById("kpiWrong").innerText = appeals.filter(a => a.status === 'Final — Wrong Fine').length;
+    }
+
+    let chartT, chartD;
+    function initCharts() {
+      const ctxT = document.getElementById('chartType').getContext('2d');
+      chartT = new Chart(ctxT, {
+        type: 'bar',
+        data: {
+          labels: ['Fines', 'Permit', 'SMS', 'Smart Yards'],
+          datasets: [{ data: [12, 19, 3, 5], backgroundColor: '#10b981' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+      });
+
+      const ctxD = document.getElementById('chartDecision').getContext('2d');
+      chartD = new Chart(ctxD, {
+        type: 'doughnut',
+        data: {
+          labels: ['Correct Fine', 'Wrong Fine', 'Pending'],
+          datasets: [{ data: [10, 5, 4], backgroundColor: ['#059669', '#f43f5e', '#f59e0b'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    function updateCharts() {
+      if (chartT && chartD) {
+        chartT.update(); chartD.update();
+      }
+    }
+  </script>
+</body>
+</html>
